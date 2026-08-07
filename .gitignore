@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+.vscode/
+
+# Evaluation outputs and logs
+eval/exp/
+eval/logs/
+outputs/
+logs/
+
+# Local datasets and model checkpoints
+data/
+datasets/
+checkpoints/
+*.arrow
+*.parquet
+*.safetensors
+*.pt
+*.pth
+*.bin

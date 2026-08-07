@@ -2,6 +2,96 @@
 [![arXiv](https://img.shields.io/badge/Paper-arXiv-red.svg)](https://arxiv.org/abs/2505.16933)
 [![deploy](https://img.shields.io/badge/Hugging%20Face-LLaDA_V-FFEB3B)](https://huggingface.co/GSAI-ML/LLaDA-V)
 
+## VisualMargin
+
+This private research fork adds VisualMargin, a fixed-budget decoding method
+for LLaDA-V. At every denoising step it keeps the normal-image top-1 token at
+each masked position, but reorders the fixed transfer quota using evidence from
+a same-size gray-image counterfactual:
+
+```text
+visual support = sigmoid(normal top1-vs-top2 margin
+                         - gray-image margin for the same two tokens)
+selection score = native top-1 confidence * visual support
+```
+
+The aligned setting used in the included evaluations is `gen_length=256`,
+`block_length=256`, and `steps=32`, so exactly eight positions are committed
+per full decoding step. VisualMargin changes only the position ordering; the
+normal-image top-1 candidates and transfer quota remain unchanged.
+
+### Repository layout
+
+- `train/llava/visual_margin.py`: VisualMargin decoding implementation.
+- `eval/eval_pope_visual_margin.py`: POPE VisualMargin evaluation.
+- `eval/eval_mmmu_visual_margin.py`: MMMU VisualMargin evaluation.
+- `eval/eval_hallusion.py`: aligned Native/VisualMargin HallusionBench evaluation.
+- `eval/eval_*_native.py`: fixed-quota Native baselines.
+- `eval/run_visual_margin_benchmarks.sh`: serial benchmark runner.
+
+### Installation
+
+Use the original LLaDA-V environment setup:
+
+```bash
+cd train
+bash init_env.sh
+cd ..
+```
+
+The model can be loaded directly from `GSAI-ML/LLaDA-V`, or supplied as a
+local Hugging Face checkpoint through `PRETRAINED`.
+
+### Data
+
+MMMU and HallusionBench can be loaded from Hugging Face. For offline runs,
+provide their Arrow files through `MMMU_ARROW` and `HALLUSION_ARROW`.
+
+POPE expects the following layout under `POPE_ROOT`:
+
+```text
+POPE_ROOT/
+├── output/coco/coco_pope_random.json
+├── output/coco/coco_pope_popular.json
+├── output/coco/coco_pope_adversarial.json
+└── val2014/val2014/*.jpg
+```
+
+### Run aligned evaluations
+
+Run all tasks serially on one GPU:
+
+```bash
+cd eval
+GPU=0 \
+PRETRAINED=GSAI-ML/LLaDA-V \
+POPE_ROOT=/path/to/POPE \
+bash run_visual_margin_benchmarks.sh
+```
+
+Use local cached datasets and model weights:
+
+```bash
+GPU=0 \
+PRETRAINED=/path/to/LLaDA-V-checkpoint \
+MMMU_ARROW=/path/to/mmmu-validation.arrow \
+HALLUSION_ARROW=/path/to/hallusion-image.arrow \
+POPE_ROOT=/path/to/POPE \
+bash run_visual_margin_benchmarks.sh
+```
+
+Tasks can be disabled independently:
+
+```bash
+RUN_MMMU=0 RUN_HALLUSION=0 RUN_POPE=1 \
+POPE_ROOT=/path/to/POPE \
+bash run_visual_margin_benchmarks.sh
+```
+
+Outputs are written under `eval/exp/` and logs under `eval/logs/`; both are
+ignored by Git. VisualMargin performs two model forwards per decoding step, so
+it is expected to take roughly twice as long as Native decoding.
+
 
 ## News
 - [2026.03.23] We are excited to introduce [LLaDA-o](https://huggingface.co/GSAI-ML/LLaDA-o), the latest model in the LLaDA series. As an effective and length-adaptive omni diffusion model for unified multimodal understanding and generation, LLaDA-o extends the LLaDA line to broader multimodal settings, supporting visual understanding, text-to-image generation, and instruction-based image editing. For more details, please check out the [paper](https://huggingface.co/papers/2603.01068) and [code](https://github.com/ML-GSAI/LLaDA-o).
@@ -174,5 +264,4 @@ We are also very grateful to Chengyue for helping us adapt [Fast-dLLM](https://g
   year={2025}
 }
 ```
-
 
